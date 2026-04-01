@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CircleFund
 
-## Getting Started
+CircleFund is a private lending-circle / ROSCA intelligence MVP built for invite-only community groups. This initial scaffold covers repo setup, Prisma + Neon database modeling, a REST API onboarding layer, and a placeholder circle dashboard.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router + TypeScript
+- Tailwind CSS 4
+- shadcn/ui
+- Prisma 7
+- Neon Postgres
+- Vitest for route-level API tests
+
+## MVP Features
+
+- Create a circle with contribution rules, approval mode, admin membership, and invite code
+- Join a circle by invite code
+- Cookie-backed MVP session handling
+- Protected circle dashboard backed by `/api/v1`
+- Prisma schema designed to extend into future contribution, loan, review, and repayment models
+
+## Data Model
+
+Current Prisma models:
+
+- `User`
+- `Circle`
+- `CircleRule`
+- `CircleMembership`
+
+Current enums:
+
+- `MembershipRole`
+- `MembershipStatus`
+- `ContributionFrequency`
+- `ApprovalMode`
+
+## Local Setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy the example env file and add your Neon connection strings:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Update `.env`:
+
+   - `DATABASE_URL`: Neon pooled connection string used by the app at runtime
+   - `DIRECT_URL`: Neon direct connection string used by Prisma CLI and migrations
+   - `SESSION_SECRET`: any long random string for signed cookie sessions
+
+4. Apply the initial Prisma migration to your database:
+
+   ```bash
+   npm run db:migrate
+   ```
+
+5. Start the app:
+
+   ```bash
+   npm run dev
+   ```
+
+6. Open `http://localhost:3000`
+
+## Useful Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm test
+npm run build
+npm run db:validate
+npm run db:generate
+npm run db:studio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Surface
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `POST /api/v1/circles`
+- `POST /api/v1/circles/join`
+- `GET /api/v1/circles/:circleId`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All endpoints return JSON. The create and join endpoints also set an httpOnly signed session cookie for the current user.
 
-## Learn More
+## Notes
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Money is stored as integer cents in the database and formatted as USD in the UI/API responses.
+- Invite-code joins create `ACTIVE` memberships immediately for this MVP.
+- Prisma CLI uses `DIRECT_URL` in `prisma.config.ts`, which matches the current Prisma 7 config pattern for Postgres migrations.

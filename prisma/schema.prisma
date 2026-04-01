@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MembershipRole {
+  ADMIN
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+}
+
+enum ContributionFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum ApprovalMode {
+  ADMIN_ONLY
+  REVIEWER_VOTE
+  REVIEWER_VOTE_ADMIN_FINALIZE
+}
+
+model User {
+  id             String             @id @default(cuid())
+  email          String             @unique
+  name           String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  createdCircles Circle[]           @relation("CircleCreator")
+  memberships    CircleMembership[]
+}
+
+model Circle {
+  id          String             @id @default(cuid())
+  name        String
+  inviteCode  String             @unique @db.VarChar(8)
+  createdById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   User               @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships CircleMembership[]
+  rule        CircleRule?
+
+  @@index([createdById])
+}
+
+model CircleRule {
+  id                      String                @id @default(cuid())
+  circleId                String                @unique
+  contributionAmountCents Int
+  contributionFrequency   ContributionFrequency
+  maxLoanSizeCents        Int
+  approvalMode            ApprovalMode
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  circle                  Circle                @relation(fields: [circleId], references: [id], onDelete: Cascade)
+}
+
+model CircleMembership {
+  id        String           @id @default(cuid())
+  circleId  String
+  userId    String
+  role      MembershipRole   @default(MEMBER)
+  status    MembershipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  circle    Circle           @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circleId, userId])
+  @@index([circleId])
+  @@index([userId])
+}

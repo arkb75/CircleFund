@@ -1,0 +1,164 @@
+import type {
+  ApprovalMode,
+  ContributionFrequency,
+  MembershipRole,
+  MembershipStatus,
+  Prisma,
+  PrismaClient,
+} from "@/generated/prisma/client";
+
+type DatabaseClient = PrismaClient | Prisma.TransactionClient;
+
+export async function upsertUser(
+  db: DatabaseClient,
+  input: {
+    email: string;
+    name: string;
+  },
+) {
+  return db.user.upsert({
+    where: { email: input.email },
+    update: { name: input.name },
+    create: input,
+    select: {
+      id: true,
+      email: true,
+      name: true,
+    },
+  });
+}
+
+export async function createCircle(
+  db: DatabaseClient,
+  input: {
+    name: string;
+    inviteCode: string;
+    createdById: string;
+  },
+) {
+  return db.circle.create({
+    data: input,
+    select: {
+      id: true,
+      name: true,
+      inviteCode: true,
+    },
+  });
+}
+
+export async function createCircleRule(
+  db: DatabaseClient,
+  input: {
+    circleId: string;
+    contributionAmountCents: number;
+    contributionFrequency: ContributionFrequency;
+    maxLoanSizeCents: number;
+    approvalMode: ApprovalMode;
+  },
+) {
+  return db.circleRule.create({
+    data: input,
+  });
+}
+
+export async function createMembership(
+  db: DatabaseClient,
+  input: {
+    circleId: string;
+    userId: string;
+    role: MembershipRole;
+    status: MembershipStatus;
+  },
+) {
+  return db.circleMembership.create({
+    data: input,
+    select: {
+      id: true,
+      circleId: true,
+      role: true,
+      status: true,
+    },
+  });
+}
+
+export async function findCircleByInviteCode(db: DatabaseClient, inviteCode: string) {
+  return db.circle.findUnique({
+    where: { inviteCode },
+    select: {
+      id: true,
+      name: true,
+      inviteCode: true,
+    },
+  });
+}
+
+export async function findMembershipForCircleUser(
+  db: DatabaseClient,
+  circleId: string,
+  userId: string,
+) {
+  return db.circleMembership.findUnique({
+    where: {
+      circleId_userId: {
+        circleId,
+        userId,
+      },
+    },
+    select: {
+      id: true,
+      circleId: true,
+      role: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+}
+
+export async function findLatestMembershipForUser(db: DatabaseClient, userId: string) {
+  return db.circleMembership.findFirst({
+    where: {
+      userId,
+    },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+    select: {
+      circleId: true,
+      status: true,
+    },
+  });
+}
+
+export async function findCircleDashboard(db: DatabaseClient, circleId: string) {
+  return db.circle.findUnique({
+    where: { id: circleId },
+    select: {
+      id: true,
+      name: true,
+      inviteCode: true,
+      rule: {
+        select: {
+          contributionAmountCents: true,
+          contributionFrequency: true,
+          maxLoanSizeCents: true,
+          approvalMode: true,
+        },
+      },
+      memberships: {
+        orderBy: [{ createdAt: "asc" }],
+        select: {
+          id: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          userId: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}

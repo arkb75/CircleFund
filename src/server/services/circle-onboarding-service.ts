@@ -1,0 +1,159 @@
+import { randomInt } from "node:crypto";
+
+import { Prisma } from "@/generated/prisma/client";
+import { MembershipRole, MembershipStatus } from "@/generated/prisma/client";
+import type { CircleRedirectResponse } from "@/lib/api-types";
+import { dollarsToCents } from "@/lib/money";
+import type {
+  CreateCircleRequest,
+  JoinCircleRequest,
+} from "@/lib/validations/circles";
+import { prisma } from "@/lib/prisma";
+import {
+  createCircle,
+  createCircleRule,
+  createMembership,
+  findCircleByInviteCode,
+  findMembershipForCircleUser,
+  upsertUser,
+} from "@/server/data/circle-repository";
+import { ServiceError } from "@/server/services/service-error";
+
+const INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_INVITE_CODE_ATTEMPTS = 6;
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function normalizeInviteCode(inviteCode: string) {
+  return inviteCode.trim().toUpperCase();
+}
+
+function generateInviteCode() {
+  return Array.from({ length: 8 }, () => {
+    const randomIndex = randomInt(INVITE_CODE_ALPHABET.length);
+    return INVITE_CODE_ALPHABET[randomIndex];
+  }).join("");
+}
+
+function isInviteCodeConflict(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code !== "P2002") {
+    return false;
+  }
+
+  const target = error.meta?.target;
+
+  if (Array.isArray(target)) {
+    return target.includes("inviteCode");
+  }
+
+  return target === "inviteCode";
+}
+
+type CircleMutationResult = CircleRedirectResponse & {
+  userId: string;
+};
+
+export async function createCircleWithOwner(
+  input: CreateCircleRequest,
+): Promise<CircleMutationResult> {
+  const normalizedUser = {
+    name: input.user.name.trim(),
+    email: normalizeEmail(input.user.email),
+  };
+
+  for (let attempt = 0; attempt < MAX_INVITE_CODE_ATTEMPTS; attempt += 1) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const user = await upsertUser(tx, normalizedUser);
+        const circle = await createCircle(tx, {
+          name: input.circle.name.trim(),
+          inviteCode: generateInviteCode(),
+          createdById: user.id,
+        });
+
+        await createCircleRule(tx, {
+          circleId: circle.id,
+          contributionAmountCents: dollarsToCents(input.circle.contributionAmount),
+          contributionFrequency: input.circle.contributionFrequency,
+          maxLoanSizeCents: dollarsToCents(input.circle.maxLoanSize),
+          approvalMode: input.circle.approvalMode,
+        });
+
+        await createMembership(tx, {
+          circleId: circle.id,
+          userId: user.id,
+          role: MembershipRole.ADMIN,
+          status: MembershipStatus.ACTIVE,
+        });
+
+        return {
+          userId: user.id,
+          circle,
+          redirectTo: `/circles/${circle.id}`,
+        };
+      });
+    } catch (error) {
+      if (isInviteCodeConflict(error) && attempt < MAX_INVITE_CODE_ATTEMPTS - 1) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new ServiceError(
+    500,
+    "INVITE_CODE_GENERATION_FAILED",
+    "Unable to create a unique invite code for this circle.",
+  );
+}
+
+export async function joinCircleByInviteCode(
+  input: JoinCircleRequest,
+): Promise<CircleMutationResult> {
+  const normalizedUser = {
+    name: input.user.name.trim(),
+    email: normalizeEmail(input.user.email),
+  };
+  const inviteCode = normalizeInviteCode(input.inviteCode);
+
+  return prisma.$transaction(async (tx) => {
+    const circle = await findCircleByInviteCode(tx, inviteCode);
+
+    if (!circle) {
+      throw new ServiceError(404, "INVITE_CODE_NOT_FOUND", "Invite code not found.");
+    }
+
+    const user = await upsertUser(tx, normalizedUser);
+    const existingMembership = await findMembershipForCircleUser(tx, circle.id, user.id);
+
+    if (existingMembership?.status === MembershipStatus.SUSPENDED) {
+      throw new ServiceError(
+        403,
+        "MEMBERSHIP_SUSPENDED",
+        "This membership is suspended and cannot join the circle.",
+      );
+    }
+
+    if (!existingMembership) {
+      await createMembership(tx, {
+        circleId: circle.id,
+        userId: user.id,
+        role: MembershipRole.MEMBER,
+        status: MembershipStatus.ACTIVE,
+      });
+    }
+
+    return {
+      userId: user.id,
+      circle,
+      redirectTo: `/circles/${circle.id}`,
+    };
+  });
+}
