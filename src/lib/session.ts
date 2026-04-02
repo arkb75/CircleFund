@@ -74,6 +74,18 @@ export function setSessionCookie(response: NextResponse, userId: string) {
   });
 }
 
+export function clearSessionCookie(response: NextResponse) {
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
 export async function getSessionUserId() {
   const cookieStore = await cookies();
   return readSessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value)?.userId ?? null;

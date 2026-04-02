@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -39,9 +40,20 @@ export function CircleDashboard({
             <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_center,_rgba(16,82,52,0.12),_transparent_70%)] lg:block" />
             <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-4">
-                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
-                  Private lending circle
-                </Badge>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
+                    Private lending circle
+                  </Badge>
+                  <form action="/api/v1/session/logout" method="POST">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="h-9 rounded-full border-primary/15 bg-white/80 px-4 text-sm text-foreground hover:bg-white"
+                    >
+                      Log out
+                    </Button>
+                  </form>
+                </div>
                 <div className="space-y-3">
                   <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
                     {dashboard.circle.name}
