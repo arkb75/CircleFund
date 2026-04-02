@@ -58,6 +58,12 @@ Current enums:
 4. Apply the initial Prisma migration to your database:
 
    ```bash
+   npm run db:deploy
+   ```
+
+   For local iterative schema work, use:
+
+   ```bash
    npm run db:migrate
    ```
 
@@ -77,6 +83,7 @@ npm test
 npm run build
 npm run db:validate
 npm run db:generate
+npm run db:deploy
 npm run db:studio
 ```
 
