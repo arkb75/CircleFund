@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ContributionWorkspace } from "@/components/circle/contribution-workspace";
 import {
   Table,
   TableBody,
@@ -71,13 +72,12 @@ export function CircleDashboard({
                   <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
                     {dashboard.circle.name}
                   </h1>
-                  <p className="max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-                    Contributions, invite access, and membership status are live. Loan
-                    requests, underwriting signals, and repayment tracking can slot into
-                    this circle model later without reshaping the onboarding flow.
-                  </p>
-                </div>
+                <p className="max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+                    Track contributions, review who is current for the month, and keep
+                    the circle roster organized in one workspace.
+                </p>
               </div>
+            </div>
 
               <div className="rounded-[1.75rem] border border-primary/15 bg-primary/8 px-5 py-4">
                 <div className="text-xs uppercase tracking-[0.22em] text-primary/70">
@@ -166,6 +166,14 @@ export function CircleDashboard({
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Current contribution period
+                </div>
+                <div className="mt-3 text-2xl font-semibold">
+                  {dashboard.circle.currentContributionPeriodLabel}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Max active loans
                 </div>
                 <div className="mt-3 text-3xl font-semibold">
@@ -179,13 +187,14 @@ export function CircleDashboard({
             </div>
           </section>
 
+          <ContributionWorkspace dashboard={dashboard} />
+
           <section className="px-6 py-6 md:px-8 md:py-8">
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight">Member roster</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Current circle members and placeholder access state for future review
-                  and loan workflows.
+                  Current circle members with this month&apos;s contribution progress.
                 </p>
               </div>
             </div>
@@ -197,6 +206,8 @@ export function CircleDashboard({
                     <TableHead className="px-4 py-3">Member</TableHead>
                     <TableHead className="px-4 py-3">Role</TableHead>
                     <TableHead className="px-4 py-3">Status</TableHead>
+                    <TableHead className="px-4 py-3">This Month</TableHead>
+                    <TableHead className="px-4 py-3">Remaining</TableHead>
                     <TableHead className="px-4 py-3">Joined</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -220,6 +231,12 @@ export function CircleDashboard({
                         <Badge variant={toneForStatus(member.status)}>
                           {formatEnumLabel(member.status)}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-sm font-medium">
+                        {member.currentContributionTotalFormatted}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-sm font-medium">
+                        {member.currentContributionRemainingFormatted}
                       </TableCell>
                       <TableCell className="px-4 py-4 text-sm text-muted-foreground">
                         {new Date(member.joinedAt).toLocaleDateString("en-US", {

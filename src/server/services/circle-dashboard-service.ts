@@ -2,6 +2,11 @@ import {
   MembershipRole,
   MembershipStatus,
 } from "@/generated/prisma/client";
+import {
+  formatContributionPeriodLabel,
+  formatDateOnly,
+  getCurrentContributionPeriodStart,
+} from "@/lib/contribution-periods";
 import type { CircleDashboardResponse } from "@/lib/api-types";
 import { centsToDollars, formatUsdFromCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +14,7 @@ import {
   findCircleDashboard,
   findLatestMembershipForUser,
 } from "@/server/data/circle-repository";
+import { buildContributionSummary } from "@/server/services/contribution-analytics";
 import { ServiceError } from "@/server/services/service-error";
 
 const rolePriority: Record<MembershipRole, number> = {
@@ -30,11 +36,18 @@ export async function getCircleDashboardForUser(
   circleId: string,
   userId: string,
 ): Promise<CircleDashboardResponse> {
-  const circle = await findCircleDashboard(prisma, circleId);
+  const currentContributionPeriodStart = getCurrentContributionPeriodStart();
+  const circle = await findCircleDashboard(
+    prisma,
+    circleId,
+    currentContributionPeriodStart,
+  );
 
   if (!circle || !circle.rule) {
     throw new ServiceError(404, "CIRCLE_NOT_FOUND", "Circle not found.");
   }
+
+  const circleRule = circle.rule;
 
   const viewerMembership = circle.memberships.find(
     (membership) => membership.userId === userId,
@@ -55,40 +68,57 @@ export async function getCircleDashboardForUser(
 
       return left.user.name.localeCompare(right.user.name);
     })
-    .map((membership) => ({
-      id: membership.user.id,
-      name: membership.user.name,
-      email: membership.user.email,
-      role: membership.role,
-      status: membership.status,
-      joinedAt: membership.createdAt.toISOString(),
-    }));
+    .map((membership) => {
+      const contributionSummary = buildContributionSummary(
+        circleRule.minimumMonthlyContributionCents,
+        membership.contributions,
+      );
+
+      return {
+        membershipId: membership.id,
+        id: membership.user.id,
+        name: membership.user.name,
+        email: membership.user.email,
+        role: membership.role,
+        status: membership.status,
+        joinedAt: membership.createdAt.toISOString(),
+        currentContributionTotal: contributionSummary.total,
+        currentContributionTotalFormatted: contributionSummary.totalFormatted,
+        currentContributionRemaining: contributionSummary.remaining,
+        currentContributionRemainingFormatted: contributionSummary.remainingFormatted,
+      };
+    });
 
   return {
     circle: {
       id: circle.id,
       name: circle.name,
       inviteCode: circle.inviteCode,
-      approvalMode: circle.rule.approvalMode,
+      currentContributionPeriodStart: formatDateOnly(currentContributionPeriodStart),
+      currentContributionPeriodLabel: formatContributionPeriodLabel(
+        currentContributionPeriodStart,
+      ),
+      approvalMode: circleRule.approvalMode,
       minimumMonthlyContribution: centsToDollars(
-        circle.rule.minimumMonthlyContributionCents,
+        circleRule.minimumMonthlyContributionCents,
       ),
       minimumMonthlyContributionFormatted: formatUsdFromCents(
-        circle.rule.minimumMonthlyContributionCents,
+        circleRule.minimumMonthlyContributionCents,
       ),
       minimumReserveBalance: centsToDollars(
-        circle.rule.minimumReserveBalanceCents,
+        circleRule.minimumReserveBalanceCents,
       ),
       minimumReserveBalanceFormatted: formatUsdFromCents(
-        circle.rule.minimumReserveBalanceCents,
+        circleRule.minimumReserveBalanceCents,
       ),
       minimumMembershipDurationMonths:
-        circle.rule.minimumMembershipDurationMonths ?? null,
-      maxActiveLoansPerMember: circle.rule.maxActiveLoansPerMember ?? null,
-      maxRepaymentTermMonths: circle.rule.maxRepaymentTermMonths ?? null,
+        circleRule.minimumMembershipDurationMonths ?? null,
+      maxActiveLoansPerMember: circleRule.maxActiveLoansPerMember ?? null,
+      maxRepaymentTermMonths: circleRule.maxRepaymentTermMonths ?? null,
       memberCount: members.length,
     },
     viewerMembership: {
+      membershipId: viewerMembership.id,
       role: viewerMembership.role,
       status: viewerMembership.status,
     },

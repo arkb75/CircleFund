@@ -119,9 +119,98 @@ export async function findMembershipForCircleUser(
     select: {
       id: true,
       circleId: true,
+      userId: true,
       role: true,
       status: true,
       createdAt: true,
+    },
+  });
+}
+
+export async function findCircleMembershipById(
+  db: DatabaseClient,
+  circleId: string,
+  membershipId: string,
+) {
+  return db.circleMembership.findFirst({
+    where: {
+      id: membershipId,
+      circleId,
+    },
+    select: {
+      id: true,
+      circleId: true,
+      userId: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      circle: {
+        select: {
+          rule: {
+            select: {
+              minimumMonthlyContributionCents: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function createContribution(
+  db: DatabaseClient,
+  input: {
+    circleId: string;
+    membershipId: string;
+    recordedByUserId: string;
+    amountCents: number;
+    contributedOn: Date;
+    periodStart: Date;
+  },
+) {
+  return db.contribution.create({
+    data: input,
+    select: {
+      id: true,
+      membershipId: true,
+      amountCents: true,
+      contributedOn: true,
+      periodStart: true,
+      createdAt: true,
+    },
+  });
+}
+
+export async function findContributionHistoryForMembership(
+  db: DatabaseClient,
+  circleId: string,
+  membershipId: string,
+) {
+  return db.contribution.findMany({
+    where: {
+      circleId,
+      membershipId,
+    },
+    orderBy: [{ periodStart: "desc" }, { contributedOn: "desc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      amountCents: true,
+      contributedOn: true,
+      periodStart: true,
+      createdAt: true,
+      recordedByUser: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 }
@@ -139,7 +228,11 @@ export async function findLatestMembershipForUser(db: DatabaseClient, userId: st
   });
 }
 
-export async function findCircleDashboard(db: DatabaseClient, circleId: string) {
+export async function findCircleDashboard(
+  db: DatabaseClient,
+  circleId: string,
+  currentPeriodStart: Date,
+) {
   return db.circle.findUnique({
     where: { id: circleId },
     select: {
@@ -164,6 +257,14 @@ export async function findCircleDashboard(db: DatabaseClient, circleId: string) 
           status: true,
           createdAt: true,
           userId: true,
+          contributions: {
+            where: {
+              periodStart: currentPeriodStart,
+            },
+            select: {
+              amountCents: true,
+            },
+          },
           user: {
             select: {
               id: true,

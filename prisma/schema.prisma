@@ -31,25 +31,27 @@ enum ApprovalMode {
 }
 
 model User {
-  id             String             @id @default(cuid())
-  email          String             @unique
-  name           String
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  createdCircles Circle[]           @relation("CircleCreator")
-  memberships    CircleMembership[]
+  id                    String             @id @default(cuid())
+  email                 String             @unique
+  name                  String
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  createdCircles        Circle[]           @relation("CircleCreator")
+  memberships           CircleMembership[]
+  recordedContributions Contribution[]     @relation("ContributionRecorder")
 }
 
 model Circle {
-  id          String             @id @default(cuid())
-  name        String
-  inviteCode  String             @unique @db.VarChar(8)
-  createdById String
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  createdBy   User               @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  memberships CircleMembership[]
-  rule        CircleRule?
+  id            String             @id @default(cuid())
+  name          String
+  inviteCode    String             @unique @db.VarChar(8)
+  createdById   String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  createdBy     User               @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships   CircleMembership[]
+  rule          CircleRule?
+  contributions Contribution[]
 
   @@index([createdById])
 }
@@ -69,17 +71,37 @@ model CircleRule {
 }
 
 model CircleMembership {
-  id        String           @id @default(cuid())
-  circleId  String
-  userId    String
-  role      MembershipRole   @default(MEMBER)
-  status    MembershipStatus @default(PENDING)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  circle    Circle           @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  circleId      String
+  userId        String
+  role          MembershipRole   @default(MEMBER)
+  status        MembershipStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  circle        Circle           @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions Contribution[]
 
   @@unique([circleId, userId])
   @@index([circleId])
   @@index([userId])
+}
+
+model Contribution {
+  id               String           @id @default(cuid())
+  circleId         String
+  membershipId     String
+  recordedByUserId String
+  amountCents      Int
+  contributedOn    DateTime         @db.Date
+  periodStart      DateTime         @db.Date
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  circle           Circle           @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  membership       CircleMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  recordedByUser   User             @relation("ContributionRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([circleId, periodStart])
+  @@index([membershipId, periodStart])
+  @@index([recordedByUserId])
 }
