@@ -2,28 +2,50 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/v1/circles/route";
 
-const { createCircleWithOwner, setSessionCookie } = vi.hoisted(() => ({
-  createCircleWithOwner: vi.fn(),
-  setSessionCookie: vi.fn(),
+const { createCircleForUser, getSessionUserId } = vi.hoisted(() => ({
+  createCircleForUser: vi.fn(),
+  getSessionUserId: vi.fn(),
 }));
 
 vi.mock("@/server/services/circle-onboarding-service", () => ({
-  createCircleWithOwner,
+  createCircleForUser,
 }));
 
 vi.mock("@/lib/session", () => ({
-  setSessionCookie,
+  getSessionUserId,
 }));
 
 describe("POST /api/v1/circles", () => {
   beforeEach(() => {
-    createCircleWithOwner.mockReset();
-    setSessionCookie.mockReset();
+    createCircleForUser.mockReset();
+    getSessionUserId.mockReset();
+  });
+
+  it("returns 403 when no session is present", async () => {
+    getSessionUserId.mockResolvedValue(null);
+
+    const response = await POST(
+      new Request("http://localhost/api/v1/circles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "North Hill Community Circle",
+          contributionAmount: 250,
+          contributionFrequency: "MONTHLY",
+          maxLoanSize: 1000,
+          approvalMode: "ADMIN_ONLY",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
   });
 
   it("returns 201 with a redirect target when creation succeeds", async () => {
-    createCircleWithOwner.mockResolvedValue({
-      userId: "user_123",
+    getSessionUserId.mockResolvedValue("user_123");
+    createCircleForUser.mockResolvedValue({
       circle: {
         id: "circle_123",
         name: "North Hill Community Circle",
@@ -39,17 +61,11 @@ describe("POST /api/v1/circles", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user: {
-            name: "Amina Yusuf",
-            email: "amina@example.com",
-          },
-          circle: {
-            name: "North Hill Community Circle",
-            contributionAmount: 250,
-            contributionFrequency: "MONTHLY",
-            maxLoanSize: 1000,
-            approvalMode: "ADMIN_ONLY",
-          },
+          name: "North Hill Community Circle",
+          contributionAmount: 250,
+          contributionFrequency: "MONTHLY",
+          maxLoanSize: 1000,
+          approvalMode: "ADMIN_ONLY",
         }),
       }),
     );
@@ -63,10 +79,18 @@ describe("POST /api/v1/circles", () => {
       },
       redirectTo: "/circles/circle_123",
     });
-    expect(setSessionCookie).toHaveBeenCalledTimes(1);
+    expect(createCircleForUser).toHaveBeenCalledWith("user_123", {
+      name: "North Hill Community Circle",
+      contributionAmount: 250,
+      contributionFrequency: "MONTHLY",
+      maxLoanSize: 1000,
+      approvalMode: "ADMIN_ONLY",
+    });
   });
 
   it("returns 400 when the payload is invalid", async () => {
+    getSessionUserId.mockResolvedValue("user_123");
+
     const response = await POST(
       new Request("http://localhost/api/v1/circles", {
         method: "POST",
@@ -74,22 +98,16 @@ describe("POST /api/v1/circles", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user: {
-            name: "",
-            email: "not-an-email",
-          },
-          circle: {
-            name: "",
-            contributionAmount: 0,
-            contributionFrequency: "MONTHLY",
-            maxLoanSize: 0,
-            approvalMode: "ADMIN_ONLY",
-          },
+          name: "",
+          contributionAmount: 0,
+          contributionFrequency: "MONTHLY",
+          maxLoanSize: 0,
+          approvalMode: "ADMIN_ONLY",
         }),
       }),
     );
 
     expect(response.status).toBe(400);
-    expect(createCircleWithOwner).not.toHaveBeenCalled();
+    expect(createCircleForUser).not.toHaveBeenCalled();
   });
 });

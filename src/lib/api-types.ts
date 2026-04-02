@@ -19,6 +19,10 @@ export type CircleRedirectResponse = {
   redirectTo: string;
 };
 
+export type AuthRedirectResponse = {
+  redirectTo: string;
+};
+
 export type CircleDashboardResponse = {
   circle: {
     id: string;

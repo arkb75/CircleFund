@@ -28,6 +28,17 @@ export async function upsertUser(
   });
 }
 
+export async function findUserByEmail(db: DatabaseClient, email: string) {
+  return db.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+    },
+  });
+}
+
 export async function createCircle(
   db: DatabaseClient,
   input: {

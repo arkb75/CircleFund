@@ -4,10 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { MembershipRole, MembershipStatus } from "@/generated/prisma/client";
 import type { CircleRedirectResponse } from "@/lib/api-types";
 import { dollarsToCents } from "@/lib/money";
-import type {
-  CreateCircleRequest,
-  JoinCircleRequest,
-} from "@/lib/validations/circles";
+import type { CreateCircleRequest } from "@/lib/validations/circles";
 import { prisma } from "@/lib/prisma";
 import {
   createCircle,
@@ -15,16 +12,11 @@ import {
   createMembership,
   findCircleByInviteCode,
   findMembershipForCircleUser,
-  upsertUser,
 } from "@/server/data/circle-repository";
 import { ServiceError } from "@/server/services/service-error";
 
 const INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const MAX_INVITE_CODE_ATTEMPTS = 6;
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
 
 function normalizeInviteCode(inviteCode: string) {
   return inviteCode.trim().toUpperCase();
@@ -55,45 +47,75 @@ function isInviteCodeConflict(error: unknown) {
   return target === "inviteCode";
 }
 
-type CircleMutationResult = CircleRedirectResponse & {
-  userId: string;
-};
+type CreateCircleInput = CreateCircleRequest;
 
-export async function createCircleWithOwner(
-  input: CreateCircleRequest,
-): Promise<CircleMutationResult> {
-  const normalizedUser = {
-    name: input.user.name.trim(),
-    email: normalizeEmail(input.user.email),
-  };
+function normalizeCircleInviteCode(inviteCode: string) {
+  return normalizeInviteCode(inviteCode);
+}
 
+async function joinCircleForResolvedUser(userId: string, inviteCode: string) {
+  return prisma.$transaction(async (tx) => {
+    const circle = await findCircleByInviteCode(tx, normalizeCircleInviteCode(inviteCode));
+
+    if (!circle) {
+      throw new ServiceError(404, "INVITE_CODE_NOT_FOUND", "Invite code not found.");
+    }
+
+    const existingMembership = await findMembershipForCircleUser(tx, circle.id, userId);
+
+    if (existingMembership?.status === MembershipStatus.SUSPENDED) {
+      throw new ServiceError(
+        403,
+        "MEMBERSHIP_SUSPENDED",
+        "This membership is suspended and cannot join the circle.",
+      );
+    }
+
+    if (!existingMembership) {
+      await createMembership(tx, {
+        circleId: circle.id,
+        userId,
+        role: MembershipRole.MEMBER,
+        status: MembershipStatus.ACTIVE,
+      });
+    }
+
+    return {
+      circle,
+      redirectTo: `/circles/${circle.id}`,
+    };
+  });
+}
+
+export async function createCircleForUser(
+  userId: string,
+  input: CreateCircleInput,
+): Promise<CircleRedirectResponse> {
   for (let attempt = 0; attempt < MAX_INVITE_CODE_ATTEMPTS; attempt += 1) {
     try {
       return await prisma.$transaction(async (tx) => {
-        const user = await upsertUser(tx, normalizedUser);
         const circle = await createCircle(tx, {
-          name: input.circle.name.trim(),
+          name: input.name.trim(),
           inviteCode: generateInviteCode(),
-          createdById: user.id,
+          createdById: userId,
         });
 
         await createCircleRule(tx, {
           circleId: circle.id,
-          contributionAmountCents: dollarsToCents(input.circle.contributionAmount),
-          contributionFrequency: input.circle.contributionFrequency,
-          maxLoanSizeCents: dollarsToCents(input.circle.maxLoanSize),
-          approvalMode: input.circle.approvalMode,
+          contributionAmountCents: dollarsToCents(input.contributionAmount),
+          contributionFrequency: input.contributionFrequency,
+          maxLoanSizeCents: dollarsToCents(input.maxLoanSize),
+          approvalMode: input.approvalMode,
         });
 
         await createMembership(tx, {
           circleId: circle.id,
-          userId: user.id,
+          userId,
           role: MembershipRole.ADMIN,
           status: MembershipStatus.ACTIVE,
         });
 
         return {
-          userId: user.id,
           circle,
           redirectTo: `/circles/${circle.id}`,
         };
@@ -114,46 +136,9 @@ export async function createCircleWithOwner(
   );
 }
 
-export async function joinCircleByInviteCode(
-  input: JoinCircleRequest,
-): Promise<CircleMutationResult> {
-  const normalizedUser = {
-    name: input.user.name.trim(),
-    email: normalizeEmail(input.user.email),
-  };
-  const inviteCode = normalizeInviteCode(input.inviteCode);
-
-  return prisma.$transaction(async (tx) => {
-    const circle = await findCircleByInviteCode(tx, inviteCode);
-
-    if (!circle) {
-      throw new ServiceError(404, "INVITE_CODE_NOT_FOUND", "Invite code not found.");
-    }
-
-    const user = await upsertUser(tx, normalizedUser);
-    const existingMembership = await findMembershipForCircleUser(tx, circle.id, user.id);
-
-    if (existingMembership?.status === MembershipStatus.SUSPENDED) {
-      throw new ServiceError(
-        403,
-        "MEMBERSHIP_SUSPENDED",
-        "This membership is suspended and cannot join the circle.",
-      );
-    }
-
-    if (!existingMembership) {
-      await createMembership(tx, {
-        circleId: circle.id,
-        userId: user.id,
-        role: MembershipRole.MEMBER,
-        status: MembershipStatus.ACTIVE,
-      });
-    }
-
-    return {
-      userId: user.id,
-      circle,
-      redirectTo: `/circles/${circle.id}`,
-    };
-  });
+export async function joinCircleByInviteCodeForUser(
+  userId: string,
+  inviteCode: string,
+): Promise<CircleRedirectResponse> {
+  return joinCircleForResolvedUser(userId, inviteCode);
 }

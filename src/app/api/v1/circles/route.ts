@@ -5,12 +5,19 @@ import {
   createValidationErrorResponse,
   parseJsonBody,
 } from "@/lib/api";
-import { setSessionCookie } from "@/lib/session";
+import { getSessionUserId } from "@/lib/session";
 import { createCircleRequestSchema } from "@/lib/validations/circles";
-import { createCircleWithOwner } from "@/server/services/circle-onboarding-service";
+import { createCircleForUser } from "@/server/services/circle-onboarding-service";
+import { ServiceError } from "@/server/services/service-error";
 
 export async function POST(request: Request) {
   try {
+    const userId = await getSessionUserId();
+
+    if (!userId) {
+      throw new ServiceError(403, "AUTH_REQUIRED", "You need an active session.");
+    }
+
     const payload = await parseJsonBody(request);
     const parsedPayload = createCircleRequestSchema.safeParse(payload);
 
@@ -18,18 +25,15 @@ export async function POST(request: Request) {
       return createValidationErrorResponse(parsedPayload.error);
     }
 
-    const result = await createCircleWithOwner(parsedPayload.data);
-    const response = NextResponse.json(
+    const result = await createCircleForUser(userId, parsedPayload.data);
+
+    return NextResponse.json(
       {
         circle: result.circle,
         redirectTo: result.redirectTo,
       },
       { status: 201 },
     );
-
-    setSessionCookie(response, result.userId);
-
-    return response;
   } catch (error) {
     return createErrorResponse(error);
   }

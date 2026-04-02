@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ArrowRight, CircleDollarSign, ShieldCheck, Users } from "lucide-react";
 
-import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { AuthShell } from "@/components/onboarding/auth-shell";
 import { getLatestCircleRedirect } from "@/server/services/circle-dashboard-service";
 import { getSessionUserId } from "@/lib/session";
 
@@ -32,6 +32,8 @@ export default async function Home() {
     if (latestCircleRedirect) {
       redirect(latestCircleRedirect);
     }
+
+    redirect("/onboarding");
   }
 
   return (
@@ -57,12 +59,12 @@ export default async function Home() {
               </span>
               <div className="space-y-4">
                 <h1 className="max-w-3xl font-heading text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
-                  Run a trusted lending circle with structure, not marketplace noise.
+                  Bring members into a trusted lending circle through one private account gateway.
                 </h1>
                 <p className="max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
-                  CircleFund gives private ROSCA groups a clean starting point: member
-                  onboarding, contribution rules, invite-based access, and a dashboard
-                  ready for future loan review workflows.
+                  CircleFund starts with account access, then guides each member into
+                  the right next step: join with an invite code or create a new circle
+                  with clear contribution rules and private membership controls.
                 </p>
               </div>
             </div>
@@ -94,7 +96,7 @@ export default async function Home() {
         </section>
 
         <section className="relative flex items-center justify-center border-t border-white/60 px-6 py-10 lg:border-t-0 lg:border-l lg:border-white/60 lg:px-10 xl:px-14">
-          <OnboardingShell />
+          <AuthShell />
         </section>
       </div>
     </main>
