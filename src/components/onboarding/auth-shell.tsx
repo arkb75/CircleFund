@@ -140,15 +140,17 @@ export function AuthShell() {
 
             {errorMessage ? <StatusBanner tone="destructive" message={errorMessage} /> : null}
 
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isPending}
-              className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_12px_35px_rgba(16,82,52,0.22)]"
-            >
-              {isPending ? "Signing in..." : "Sign in"}
-              <ArrowRight className="size-4" />
-            </Button>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isPending}
+                className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_12px_35px_rgba(16,82,52,0.22)]"
+              >
+                {isPending ? "Signing in..." : "Sign in"}
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
           </form>
         </TabsContent>
 
@@ -192,15 +194,17 @@ export function AuthShell() {
 
             {errorMessage ? <StatusBanner tone="destructive" message={errorMessage} /> : null}
 
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isPending}
-              className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_12px_35px_rgba(16,82,52,0.22)]"
-            >
-              {isPending ? "Creating account..." : "Create account"}
-              <ArrowRight className="size-4" />
-            </Button>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isPending}
+                className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_12px_35px_rgba(16,82,52,0.22)]"
+              >
+                {isPending ? "Creating account..." : "Create account"}
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
           </form>
         </TabsContent>
       </Tabs>
