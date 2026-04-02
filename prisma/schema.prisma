@@ -55,15 +55,17 @@ model Circle {
 }
 
 model CircleRule {
-  id                      String                @id @default(cuid())
-  circleId                String                @unique
-  contributionAmountCents Int
-  contributionFrequency   ContributionFrequency
-  maxLoanSizeCents        Int
-  approvalMode            ApprovalMode
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-  circle                  Circle                @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  id                                     String       @id @default(cuid())
+  circleId                               String       @unique
+  approvalMode                           ApprovalMode
+  minimumMonthlyContributionCents        Int
+  minimumReserveBalanceCents             Int
+  minimumMembershipDurationMonths        Int?
+  maxActiveLoansPerMember                Int?
+  maxRepaymentTermMonths                 Int?
+  createdAt                              DateTime     @default(now())
+  updatedAt                              DateTime     @updatedAt
+  circle                                 Circle       @relation(fields: [circleId], references: [id], onDelete: Cascade)
 }
 
 model CircleMembership {

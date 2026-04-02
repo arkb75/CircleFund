@@ -1,6 +1,5 @@
 import type {
   ApprovalMode,
-  ContributionFrequency,
   MembershipRole,
   MembershipStatus,
   Prisma,
@@ -61,10 +60,12 @@ export async function createCircleRule(
   db: DatabaseClient,
   input: {
     circleId: string;
-    contributionAmountCents: number;
-    contributionFrequency: ContributionFrequency;
-    maxLoanSizeCents: number;
     approvalMode: ApprovalMode;
+    minimumMonthlyContributionCents: number;
+    minimumReserveBalanceCents: number;
+    minimumMembershipDurationMonths?: number;
+    maxActiveLoansPerMember?: number;
+    maxRepaymentTermMonths?: number;
   },
 ) {
   return db.circleRule.create({
@@ -147,10 +148,12 @@ export async function findCircleDashboard(db: DatabaseClient, circleId: string) 
       inviteCode: true,
       rule: {
         select: {
-          contributionAmountCents: true,
-          contributionFrequency: true,
-          maxLoanSizeCents: true,
           approvalMode: true,
+          minimumMonthlyContributionCents: true,
+          minimumReserveBalanceCents: true,
+          minimumMembershipDurationMonths: true,
+          maxActiveLoansPerMember: true,
+          maxRepaymentTermMonths: true,
         },
       },
       memberships: {

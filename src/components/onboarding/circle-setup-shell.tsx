@@ -1,14 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type ComponentProps, type FormEvent, useState, useTransition } from "react";
 import { ArrowRight, Building2, Users } from "lucide-react";
 
 import type { CircleRedirectResponse } from "@/lib/api-types";
-import {
-  approvalModes,
-  contributionFrequencies,
-} from "@/lib/validations/circles";
+import { approvalModes } from "@/lib/validations/circles";
 import { formatEnumLabel } from "@/lib/strings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +20,16 @@ type ApiErrorPayload = {
 
 const selectClassName =
   "flex h-11 w-full rounded-xl border border-border/70 bg-white/85 px-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10";
+
+function readOptionalNumber(formData: FormData, key: string) {
+  const value = String(formData.get(key) ?? "").trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  return Number(value);
+}
 
 function getErrorMessage(payload: ApiErrorPayload | null) {
   return payload?.error?.message ?? "Something went wrong. Please try again.";
@@ -63,6 +70,27 @@ function StatusBanner({
   return <div className={`rounded-2xl border px-4 py-3 text-sm ${classes}`}>{message}</div>;
 }
 
+function UnitInput({
+  unit,
+  inputClassName,
+  ...props
+}: ComponentProps<typeof Input> & {
+  unit: string;
+  inputClassName?: string;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        className={`h-11 rounded-xl border-border/70 bg-white/85 pr-16 pl-3 ${inputClassName ?? ""}`.trim()}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-medium text-muted-foreground">
+        {unit}
+      </span>
+    </div>
+  );
+}
+
 export function CircleSetupShell() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -75,10 +103,20 @@ export function CircleSetupShell() {
     const formData = new FormData(event.currentTarget);
     const payload = {
       name: String(formData.get("circleName") ?? ""),
-      contributionAmount: Number(formData.get("contributionAmount") ?? 0),
-      contributionFrequency: String(formData.get("contributionFrequency") ?? ""),
-      maxLoanSize: Number(formData.get("maxLoanSize") ?? 0),
       approvalMode: String(formData.get("approvalMode") ?? ""),
+      minimumMonthlyContribution: Number(
+        formData.get("minimumMonthlyContribution") ?? 0,
+      ),
+      minimumReserveBalance: Number(formData.get("minimumReserveBalance") ?? 0),
+      minimumMembershipDurationMonths: readOptionalNumber(
+        formData,
+        "minimumMembershipDurationMonths",
+      ),
+      maxActiveLoansPerMember: readOptionalNumber(
+        formData,
+        "maxActiveLoansPerMember",
+      ),
+      maxRepaymentTermMonths: readOptionalNumber(formData, "maxRepaymentTermMonths"),
     };
 
     startTransition(async () => {
@@ -116,8 +154,8 @@ export function CircleSetupShell() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(37,99,63,0.14),_transparent_30%),linear-gradient(180deg,#faf8f2_0%,#f4f7f5_100%)] px-6 py-8 text-foreground md:px-10">
-      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="flex flex-col justify-between rounded-[2.25rem] border border-white/80 bg-white/72 p-6 shadow-[0_24px_100px_rgba(15,23,42,0.12)] backdrop-blur md:p-8">
+      <div className="mx-auto grid max-w-6xl gap-8 lg:items-start lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="flex flex-col justify-between self-start rounded-[2.25rem] border border-white/80 bg-white/72 p-6 shadow-[0_24px_100px_rgba(15,23,42,0.12)] backdrop-blur md:p-8">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Badge className="w-fit bg-primary/10 text-primary hover:bg-primary/10">
@@ -165,8 +203,8 @@ export function CircleSetupShell() {
                 </div>
                 <div className="mt-4 text-xl font-semibold">Create your circle</div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Set the contribution cadence, max loan size, and approval style
-                  before inviting the rest of the group.
+                  Set the approval policy, contribution floor, and borrowing
+                  guardrails before inviting the rest of the group.
                 </p>
               </div>
             </div>
@@ -206,84 +244,122 @@ export function CircleSetupShell() {
                   />
                 </label>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Contribution amount
-                    </span>
-                    <Input
-                      type="number"
-                      name="contributionAmount"
-                      min="1"
-                      step="0.01"
-                      placeholder="250"
-                      className="h-11 rounded-xl border-border/70 bg-white/85 px-3"
-                      disabled={isPending}
-                      required
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Max loan size
-                    </span>
-                    <Input
-                      type="number"
-                      name="maxLoanSize"
-                      min="1"
-                      step="0.01"
-                      placeholder="1000"
-                      className="h-11 rounded-xl border-border/70 bg-white/85 px-3"
-                      disabled={isPending}
-                      required
-                    />
-                  </label>
+                <div className="rounded-[1.5rem] border border-border/70 bg-[#f8f6f1] p-4">
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-foreground">Required</div>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      These settings define the base borrowing policy for the circle.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="space-y-2 sm:col-span-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Approval mode
+                      </span>
+                      <select
+                        name="approvalMode"
+                        className={selectClassName}
+                        defaultValue={approvalModes[0]}
+                        disabled={isPending}
+                      >
+                        {approvalModes.map((option) => (
+                          <option key={option} value={option}>
+                            {formatEnumLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="space-y-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Minimum monthly contribution
+                      </span>
+                      <UnitInput
+                        type="number"
+                        name="minimumMonthlyContribution"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="250"
+                        unit="USD"
+                        disabled={isPending}
+                        required
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Minimum reserve balance
+                      </span>
+                      <UnitInput
+                        type="number"
+                        name="minimumReserveBalance"
+                        min="0"
+                        step="0.01"
+                        placeholder="1000"
+                        unit="USD"
+                        disabled={isPending}
+                        required
+                      />
+                    </label>
+                  </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Contribution frequency
-                    </span>
-                    <select
-                      name="contributionFrequency"
-                      className={selectClassName}
-                      defaultValue={contributionFrequencies[2]}
-                      disabled={isPending}
-                    >
-                      {contributionFrequencies.map((option) => (
-                        <option key={option} value={option}>
-                          {formatEnumLabel(option)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-foreground">
-                      Approval mode
-                    </span>
-                    <select
-                      name="approvalMode"
-                      className={selectClassName}
-                      defaultValue={approvalModes[0]}
-                      disabled={isPending}
-                    >
-                      {approvalModes.map((option) => (
-                        <option key={option} value={option}>
-                          {formatEnumLabel(option)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="rounded-[1.5rem] border border-border/70 bg-white/70 p-4">
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-foreground">Optional</div>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Add tighter borrower limits now, or leave them open for later.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="flex flex-col gap-2">
+                      <span className="min-h-[3.5rem] text-sm font-medium text-foreground">
+                        Minimum membership duration before borrowing
+                      </span>
+                      <UnitInput
+                        type="number"
+                        name="minimumMembershipDurationMonths"
+                        min="1"
+                        step="1"
+                        placeholder="3"
+                        unit="months"
+                        disabled={isPending}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="min-h-[3.5rem] text-sm font-medium text-foreground">
+                        Max active loans per member
+                      </span>
+                      <UnitInput
+                        type="number"
+                        name="maxActiveLoansPerMember"
+                        min="1"
+                        step="1"
+                        placeholder="1"
+                        unit="loans"
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <label className="space-y-2 sm:col-span-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Max repayment term
+                      </span>
+                      <UnitInput
+                        type="number"
+                        name="maxRepaymentTermMonths"
+                        min="1"
+                        step="1"
+                        placeholder="6"
+                        unit="months"
+                        disabled={isPending}
+                      />
+                    </label>
+                  </div>
                 </div>
 
-                {errorMessage ? (
-                  <StatusBanner tone="destructive" message={errorMessage} />
-                ) : (
-                  <StatusBanner
-                    tone="default"
-                    message="The account you are using becomes the first admin and receives the circle invite code."
-                  />
-                )}
+                {errorMessage ? <StatusBanner tone="destructive" message={errorMessage} /> : null}
 
                 <Button
                   type="submit"
@@ -320,14 +396,7 @@ export function CircleSetupShell() {
                   />
                 </label>
 
-                {errorMessage ? (
-                  <StatusBanner tone="destructive" message={errorMessage} />
-                ) : (
-                  <StatusBanner
-                    tone="default"
-                    message="Invite joins create active memberships immediately in this MVP."
-                  />
-                )}
+                {errorMessage ? <StatusBanner tone="destructive" message={errorMessage} /> : null}
 
                 <Button
                   type="submit"

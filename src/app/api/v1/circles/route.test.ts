@@ -32,10 +32,12 @@ describe("POST /api/v1/circles", () => {
         },
         body: JSON.stringify({
           name: "North Hill Community Circle",
-          contributionAmount: 250,
-          contributionFrequency: "MONTHLY",
-          maxLoanSize: 1000,
           approvalMode: "ADMIN_ONLY",
+          minimumMonthlyContribution: 250,
+          minimumReserveBalance: 1000,
+          minimumMembershipDurationMonths: 3,
+          maxActiveLoansPerMember: 1,
+          maxRepaymentTermMonths: 6,
         }),
       }),
     );
@@ -62,10 +64,12 @@ describe("POST /api/v1/circles", () => {
         },
         body: JSON.stringify({
           name: "North Hill Community Circle",
-          contributionAmount: 250,
-          contributionFrequency: "MONTHLY",
-          maxLoanSize: 1000,
           approvalMode: "ADMIN_ONLY",
+          minimumMonthlyContribution: 250,
+          minimumReserveBalance: 1000,
+          minimumMembershipDurationMonths: 3,
+          maxActiveLoansPerMember: 1,
+          maxRepaymentTermMonths: 6,
         }),
       }),
     );
@@ -81,10 +85,12 @@ describe("POST /api/v1/circles", () => {
     });
     expect(createCircleForUser).toHaveBeenCalledWith("user_123", {
       name: "North Hill Community Circle",
-      contributionAmount: 250,
-      contributionFrequency: "MONTHLY",
-      maxLoanSize: 1000,
       approvalMode: "ADMIN_ONLY",
+      minimumMonthlyContribution: 250,
+      minimumReserveBalance: 1000,
+      minimumMembershipDurationMonths: 3,
+      maxActiveLoansPerMember: 1,
+      maxRepaymentTermMonths: 6,
     });
   });
 
@@ -99,10 +105,9 @@ describe("POST /api/v1/circles", () => {
         },
         body: JSON.stringify({
           name: "",
-          contributionAmount: 0,
-          contributionFrequency: "MONTHLY",
-          maxLoanSize: 0,
           approvalMode: "ADMIN_ONLY",
+          minimumMonthlyContribution: 0,
+          minimumReserveBalance: -1,
         }),
       }),
     );

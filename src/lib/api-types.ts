@@ -1,11 +1,9 @@
 import {
   approvalModes,
-  contributionFrequencies,
   membershipRoles,
   membershipStatuses,
 } from "@/lib/validations/circles";
 
-type ContributionFrequency = (typeof contributionFrequencies)[number];
 type ApprovalMode = (typeof approvalModes)[number];
 type MembershipRole = (typeof membershipRoles)[number];
 type MembershipStatus = (typeof membershipStatuses)[number];
@@ -28,12 +26,14 @@ export type CircleDashboardResponse = {
     id: string;
     name: string;
     inviteCode: string;
-    contributionAmount: number;
-    contributionAmountFormatted: string;
-    contributionFrequency: ContributionFrequency;
-    maxLoanSize: number;
-    maxLoanSizeFormatted: string;
     approvalMode: ApprovalMode;
+    minimumMonthlyContribution: number;
+    minimumMonthlyContributionFormatted: string;
+    minimumReserveBalance: number;
+    minimumReserveBalanceFormatted: string;
+    minimumMembershipDurationMonths: number | null;
+    maxActiveLoansPerMember: number | null;
+    maxRepaymentTermMonths: number | null;
     memberCount: number;
   };
   viewerMembership: {

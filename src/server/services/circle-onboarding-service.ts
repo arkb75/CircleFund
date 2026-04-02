@@ -102,10 +102,14 @@ export async function createCircleForUser(
 
         await createCircleRule(tx, {
           circleId: circle.id,
-          contributionAmountCents: dollarsToCents(input.contributionAmount),
-          contributionFrequency: input.contributionFrequency,
-          maxLoanSizeCents: dollarsToCents(input.maxLoanSize),
           approvalMode: input.approvalMode,
+          minimumMonthlyContributionCents: dollarsToCents(
+            input.minimumMonthlyContribution,
+          ),
+          minimumReserveBalanceCents: dollarsToCents(input.minimumReserveBalance),
+          minimumMembershipDurationMonths: input.minimumMembershipDurationMonths,
+          maxActiveLoansPerMember: input.maxActiveLoansPerMember,
+          maxRepaymentTermMonths: input.maxRepaymentTermMonths,
         });
 
         await createMembership(tx, {

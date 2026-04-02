@@ -27,6 +27,19 @@ function toneForStatus(status: string) {
   return "outline";
 }
 
+function formatOptionalLimit(
+  value: number | null,
+  singularLabel: string,
+  pluralLabel: string,
+  emptyLabel = "Not set",
+) {
+  if (value === null) {
+    return emptyLabel;
+  }
+
+  return `${value} ${value === 1 ? singularLabel : pluralLabel}`;
+}
+
 export function CircleDashboard({
   dashboard,
 }: {
@@ -78,24 +91,8 @@ export function CircleDashboard({
           </section>
 
           <section className="grid gap-0 border-b border-border/70 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="grid gap-0 border-b border-border/70 sm:grid-cols-2 lg:border-b-0 lg:border-r">
-              <div className="border-b border-border/70 px-6 py-5 sm:border-r lg:border-b-0">
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Contribution amount
-                </div>
-                <div className="mt-3 text-3xl font-semibold">
-                  {dashboard.circle.contributionAmountFormatted}
-                </div>
-              </div>
-              <div className="border-b border-border/70 px-6 py-5 sm:border-b-0">
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Frequency
-                </div>
-                <div className="mt-3 text-2xl font-semibold">
-                  {formatEnumLabel(dashboard.circle.contributionFrequency)}
-                </div>
-              </div>
-              <div className="border-b border-border/70 px-6 py-5 sm:border-r sm:border-b-0">
+            <div className="grid gap-0 border-b border-border/70 sm:grid-cols-2 xl:grid-cols-2 lg:border-b-0 lg:border-r">
+              <div className="border-b border-border/70 px-6 py-5 sm:border-r xl:border-b-0">
                 <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Approval mode
                 </div>
@@ -103,12 +100,44 @@ export function CircleDashboard({
                   {formatEnumLabel(dashboard.circle.approvalMode)}
                 </div>
               </div>
-              <div className="px-6 py-5">
+              <div className="border-b border-border/70 px-6 py-5 xl:border-r xl:border-b-0">
                 <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Max loan size
+                  Minimum monthly contribution
                 </div>
                 <div className="mt-3 text-2xl font-semibold">
-                  {dashboard.circle.maxLoanSizeFormatted}
+                  {dashboard.circle.minimumMonthlyContributionFormatted}
+                </div>
+              </div>
+              <div className="border-b border-border/70 px-6 py-5 sm:border-r xl:border-r-0">
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Minimum reserve balance
+                </div>
+                <div className="mt-3 text-2xl font-semibold">
+                  {dashboard.circle.minimumReserveBalanceFormatted}
+                </div>
+              </div>
+              <div className="border-b border-border/70 px-6 py-5 sm:border-r">
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Minimum membership duration
+                </div>
+                <div className="mt-3 text-2xl font-semibold">
+                  {formatOptionalLimit(
+                    dashboard.circle.minimumMembershipDurationMonths,
+                    "month",
+                    "months",
+                  )}
+                </div>
+              </div>
+              <div className="px-6 py-5">
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Max repayment term
+                </div>
+                <div className="mt-3 text-2xl font-semibold">
+                  {formatOptionalLimit(
+                    dashboard.circle.maxRepaymentTermMonths,
+                    "month",
+                    "months",
+                  )}
                 </div>
               </div>
             </div>
@@ -133,6 +162,18 @@ export function CircleDashboard({
                 </div>
                 <div className="mt-3 text-3xl font-semibold">
                   {dashboard.circle.memberCount}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Max active loans
+                </div>
+                <div className="mt-3 text-3xl font-semibold">
+                  {formatOptionalLimit(
+                    dashboard.circle.maxActiveLoansPerMember,
+                    "loan",
+                    "loans",
+                  )}
                 </div>
               </div>
             </div>

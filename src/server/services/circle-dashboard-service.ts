@@ -69,14 +69,23 @@ export async function getCircleDashboardForUser(
       id: circle.id,
       name: circle.name,
       inviteCode: circle.inviteCode,
-      contributionAmount: centsToDollars(circle.rule.contributionAmountCents),
-      contributionAmountFormatted: formatUsdFromCents(
-        circle.rule.contributionAmountCents,
-      ),
-      contributionFrequency: circle.rule.contributionFrequency,
-      maxLoanSize: centsToDollars(circle.rule.maxLoanSizeCents),
-      maxLoanSizeFormatted: formatUsdFromCents(circle.rule.maxLoanSizeCents),
       approvalMode: circle.rule.approvalMode,
+      minimumMonthlyContribution: centsToDollars(
+        circle.rule.minimumMonthlyContributionCents,
+      ),
+      minimumMonthlyContributionFormatted: formatUsdFromCents(
+        circle.rule.minimumMonthlyContributionCents,
+      ),
+      minimumReserveBalance: centsToDollars(
+        circle.rule.minimumReserveBalanceCents,
+      ),
+      minimumReserveBalanceFormatted: formatUsdFromCents(
+        circle.rule.minimumReserveBalanceCents,
+      ),
+      minimumMembershipDurationMonths:
+        circle.rule.minimumMembershipDurationMonths ?? null,
+      maxActiveLoansPerMember: circle.rule.maxActiveLoansPerMember ?? null,
+      maxRepaymentTermMonths: circle.rule.maxRepaymentTermMonths ?? null,
       memberCount: members.length,
     },
     viewerMembership: {
