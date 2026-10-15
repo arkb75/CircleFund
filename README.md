@@ -1,110 +1,98 @@
 # CircleFund
 
-CircleFund is a private lending-circle / ROSCA intelligence MVP built for invite-only community groups. This scaffold now supports account-first access, authenticated circle onboarding, a REST API layer, and a placeholder circle dashboard.
+A full-stack prototype for invite-only savings and lending circles. Members can join a circle, record contributions and review monthly progress; admins can configure circle rules and record contributions for members.
 
-## Stack
+Built with **Next.js 16, TypeScript, React 19, Tailwind CSS 4, Prisma 7 and PostgreSQL**, with **Vitest** tests for API routes and contribution calculations.
 
-- Next.js 16 App Router + TypeScript
-- Tailwind CSS 4
-- shadcn/ui
-- Prisma 7
-- Neon Postgres
-- Vitest for route-level API tests
+## What works
 
-## MVP Features
+- Account creation, email-based demo sign-in and signed HTTP-only session cookies.
+- Account-first onboarding: create a circle or join one with an invite code.
+- Circle policies for monthly contribution targets, reserves, membership duration and future lending limits.
+- Member dashboard with roles, membership status, monthly contribution totals and remaining targets.
+- Manual contribution entry with admin/member permission checks and validated dates and amounts.
+- Per-member contribution history grouped by calendar month, including who recorded each entry.
 
-- Create an account with an optional invite code
-- Sign in with an existing email-based MVP account
-- Continue authenticated users into onboarding when they do not belong to a circle yet
-- Create a circle with contribution rules, approval mode, admin membership, and invite code
-- Join a circle by invite code after account creation or during signup
-- Cookie-backed MVP session handling
-- Logout endpoint and signed-in logout actions
-- Protected circle dashboard backed by `/api/v1`
-- Prisma schema designed to extend into future contribution, loan, review, and repayment models
+## Engineering details
 
-## Data Model
+| Area | Implementation |
+| --- | --- |
+| Application | Next.js App Router with a versioned REST API |
+| Business logic | Separate service and repository layers |
+| Validation | Zod request schemas and structured API errors |
+| Persistence | Prisma migrations, relational membership constraints and PostgreSQL transactions |
+| Money and dates | Integer cents for storage; date-only contribution records and UTC monthly periods |
+| Tests | Vitest route tests plus date parsing and contribution analytics tests |
 
-Current Prisma models:
+Useful starting points for a code review:
 
-- `User`
-- `Circle`
-- `CircleRule`
-- `CircleMembership`
+- [Contribution service](src/server/services/contribution-service.ts): membership checks, recording permissions and transaction handling.
+- [Contribution analytics](src/server/services/contribution-analytics.ts) and [tests](src/server/services/contribution-analytics.test.ts): monthly totals and history grouping.
+- [Database schema](prisma/schema.prisma): users, circles, policies, memberships and contributions.
+- [API route tests](src/app/api/v1): request validation, session requirements, redirects and error responses.
+- [Contribution workspace](src/components/circle/contribution-workspace.tsx): entry forms and member history.
 
-Current enums:
+## Run locally
 
-- `MembershipRole`
-- `MembershipStatus`
-- `ContributionFrequency`
-- `ApprovalMode`
+Requirements: Node.js and npm, plus a PostgreSQL database. The project is configured for Neon PostgreSQL.
 
-## Local Setup
+1. Create a `.env` file in the repository root:
 
-1. Install dependencies:
-
-   ```bash
-   npm install
+   ```dotenv
+   DATABASE_URL="your-pooled-postgresql-connection-string"
+   DIRECT_URL="your-direct-postgresql-connection-string"
+   SESSION_SECRET="replace-with-a-long-random-secret"
    ```
 
-2. Copy the example env file and add your Neon connection strings:
+   `DATABASE_URL` is used by the application; `DIRECT_URL` is used by Prisma migrations. Keep this file out of version control.
+
+2. Install dependencies and generate the Prisma client:
 
    ```bash
-   cp .env.example .env
+   npm ci
    ```
 
-3. Update `.env`:
-
-   - `DATABASE_URL`: Neon pooled connection string used by the app at runtime
-   - `DIRECT_URL`: Neon direct connection string used by Prisma CLI and migrations
-   - `SESSION_SECRET`: any long random string for signed cookie sessions
-
-4. Apply the initial Prisma migration to your database:
+3. Apply the committed migrations to your development database:
 
    ```bash
    npm run db:deploy
    ```
 
-   For local iterative schema work, use:
-
-   ```bash
-   npm run db:migrate
-   ```
-
-5. Start the app:
+4. Start the app:
 
    ```bash
    npm run dev
    ```
 
-6. Open `http://localhost:3000`
+5. Open [localhost:3000](http://localhost:3000), create an account and create a circle. Use its invite code to join from a second demo account.
 
-## Useful Commands
+For iterative schema development, use `npm run db:migrate`. Other database tools are `npm run db:generate`, `npm run db:validate` and `npm run db:studio`.
+
+## Checks
 
 ```bash
-npm run lint
 npm test
+npm run lint
 npm run build
-npm run db:validate
-npm run db:generate
-npm run db:deploy
-npm run db:studio
 ```
 
-## API Surface
+The route tests mock the service layer; they are not end-to-end database tests.
 
-- `POST /api/v1/auth/signup`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/circles`
-- `POST /api/v1/circles/join`
-- `GET /api/v1/circles/:circleId`
-- `POST /api/v1/session/logout`
+## API
 
-All endpoints return JSON except logout, which redirects after clearing the cookie. The auth endpoints set an httpOnly signed session cookie for the current user.
+| Method | Route | Purpose |
+| --- | --- | --- |
+| POST | `/api/v1/auth/signup` | Create an account and optionally join by invite |
+| POST | `/api/v1/auth/login` | Start a demo session |
+| POST | `/api/v1/circles` | Create a circle |
+| POST | `/api/v1/circles/join` | Join a circle by invite code |
+| GET | `/api/v1/circles/:circleId` | Load the member dashboard |
+| POST | `/api/v1/circles/:circleId/contributions` | Record a contribution |
+| GET | `/api/v1/circles/:circleId/contributions?membershipId=...` | Read a member's contribution history |
+| POST | `/api/v1/session/logout` | Clear the session and redirect home |
 
-## Notes
+## Prototype scope
 
-- Money is stored as integer cents in the database and formatted as USD in the UI/API responses.
-- Invite-code joins create `ACTIVE` memberships immediately for this MVP.
-- The landing page is account-first. Circle creation and invite joining now live in the signed-in `/onboarding` flow.
-- Prisma CLI uses `DIRECT_URL` in `prisma.config.ts`, which matches the current Prisma 7 config pattern for Postgres migrations.
+Sign-in currently uses an email address without password or email-ownership verification. Replace this demo authentication before using real accounts or financial data.
+
+Contributions are manual records; the app does not move money. Loan approval, payouts and repayments are future work. Invite-code joins create active memberships immediately, and amounts are currently displayed in USD.
